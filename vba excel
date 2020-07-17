@@ -1,0 +1,269 @@
+Option Explicit
+Dim contador As Integer
+Dim tiempo
+Private p&, token, dic, res, aux
+Sub contar()
+    contador = 0
+End Sub
+Option Explicit
+Sub abreinv(direc As String)
+    Dim Modelado As String
+    Dim InvApp As Inventor.Application
+    Modelado = "C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Extrusora\Extruder.STEP\Extruder.iam"
+    Set InvApp = CreateObject("Inventor.Application")
+    InvApp.Visible = True
+    Dim oFileManager As FileManager
+    Set oFileManager = InvApp.FileManager
+    Dim strLastActiveLOD As String
+    strLastActiveLOD = oFileManager.GetLastActiveLevelOfDetailRepresentation(Modelado)
+    Dim strFullDocumentName As String
+    strFullDocumentName = oFileManager.GetFullDocumentName(Modelado, strLastActiveLOD)
+    Call InvApp.Documents.Open(strFullDocumentName, True)
+End Sub
+
+Sub AgendarMacroCada()
+    contador = contador + 1
+    Debug.Print contador
+    getmet
+    tiempo = DateAdd("s", 180, Time)
+    Application.OnTime tiempo, "AgendarMacroCada"
+    Debug.Print "ejecutado"
+End Sub
+
+Sub CancelarMacro()
+    'Dim direc As String
+    Application.OnTime tiempo, "AgendarMacroCada", , False
+    Debug.Print "detenido"
+    'direc = "C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Extrusora\Extruder.STEP\Extruder.iam"
+    'abreinv direc
+End Sub
+Sub test()
+    Dim direc As String
+    direc = "C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Extrusora\Extruder.STEP\Extruder.iam"
+    abreinv direc
+End Sub
+
+Function modify(size As Variant, tipo As Variant)
+    'Debug.Print size
+    Dim urls As String
+    Dim direc As String
+    Dim xlApp As Object
+    Dim xlWorkBook As Object
+    Set xlApp = CreateObject("Excel.Application")
+    xlApp.Visible = False
+    If tipo = 1 Then
+        Set xlWorkBook = xlApp.Workbooks.Open("C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Extrusora\Valores Parametizados.xlsx", True, False)
+        urls = "https://script.google.com/macros/s/AKfycbzvGyMqBDazsUarOXT2Xf3T42UqOx3gWMeDB45oag8Avhzz0kg/exec"
+        direc = "C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Extrusora\Extruder.STEP\Extruder.iam"
+        
+    End If
+    
+    If tipo = 2 Then
+        Set xlWorkBook = xlApp.Workbooks.Open("C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\inyectora\Piezas parametrizadas.xlsx", True, False)
+        urls = "https://script.google.com/macros/s/AKfycbxBDpDXWbz0BlCQjBphDeW_4X7VII7AFKh-hfMszBEzhg-SrQQ/exec"
+        direc = "C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\inyectora\Injection.iam"
+    End If
+    
+    If tipo = 3 Then
+        Set xlWorkBook = xlApp.Workbooks.Open("C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Trituradora\Parametrización.xlsx", True, False)
+        urls = "https://script.google.com/macros/s/AKfycbyV881xfJFkHobf7s7qRD6z-t_4f9rImO521aSvDoh2m7X9NJM7/exec"
+        direc = "C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Trituradora\Modelado\General.iam"
+    End If
+    
+    If tipo = 4 Then
+        Set xlWorkBook = xlApp.Workbooks.Open("C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Prensa\Parametrizacion.xlsx", True, False)
+        urls = "https://script.google.com/macros/s/AKfycby5I9LHEKLhVUgFWfYo_ddxnZcKx3e-D_J5DCrIN0YHWnSFLSY/exec"
+        direc = "C:\Users\MAPARE\Google Drive\Computación Gráfica\Proyecto Final\Maquinas\Prensa\Modelo\0. Ensamble_Prensa.iam"
+    End If
+    
+    xlWorkBook.Sheets(1).Range("G1").Value = size
+    With xlWorkBook
+        .Save
+        .Close
+    End With
+    Set xlApp = Nothing
+    Set xlWorkBook = Nothing
+    
+    'abreinv direc
+    getscript urls
+    
+    
+    
+End Function
+
+Sub getscript(urls As String)
+Dim ie As Object
+Set ie = CreateObject("INTERNETEXPLORER.APPLICATION")
+ie.NAVIGATE urls
+             
+ie.Visible = False
+While ie.readyState <> 4 Or ie.Busy: DoEvents: Wend
+ie.Quit
+End Sub
+
+
+Function getmet()
+    Dim objRequest As Object
+    Dim strUrl As String
+    Dim strResponse As String
+    Dim body As String
+    Dim strResponseHeaders As String
+    Dim allResponseHeader As String
+    Dim Json As Object
+    Set objRequest = CreateObject("WinHttp.WinHttpRequest.5.1")
+    strUrl = "http://18.234.163.194:3001/maquinas"
+    body = " { ""from"": ""Epic"",""select"": []}"
+    'with basic'
+    With objRequest
+        .Open "GET", strUrl, False, "XXXX", "XXXX"
+        .setRequestHeader "Content-Type", "application/json"
+        .Send body
+        strResponseHeaders = .statusText
+        strResponse = .responseText
+        allResponseHeader = .GetAllResponseHeaders
+    End With
+    'Debug.Print strResponse
+    Set Json = ParseJSON(strResponse)
+    Dim clave As Variant
+    Dim clave2 As Variant
+    Dim id As Variant
+    Dim size As Variant
+    Dim tipo As Variant
+    
+    Dim received As Variant
+    'Debug.Print Json.Count
+    Dim x As Integer
+    
+    For x = 0 To ((Json.Count / 10) - 1)
+        'Debug.Print x
+        If Json("obj(" & x & ").received") = "false" Then
+            id = Json("obj(" & x & ").id")
+            'Debug.Print Json("obj(" & x & ").id")
+            tipo = Json("obj(" & x & ").type")
+            'Debug.Print Json("obj(" & x & ").type")
+            size = Json("obj(" & x & ").size")
+            'Debug.Print Json("obj(" & x & ").type")
+            modify size, tipo
+            'test
+            Exit For
+        End If
+    Next
+   
+End Function
+
+Function ParseJSON(Json$, Optional key$ = "obj") As Object
+    p = 1
+    token = Tokenize(Json)
+    Set dic = CreateObject("Scripting.Dictionary")
+    If token(p) = "{" Then ParseObj key Else ParseArr key
+    Set ParseJSON = dic
+End Function
+
+Function ParseObj(key$)
+    Do: p = p + 1
+        Select Case token(p)
+            Case "]"
+            Case "[":  ParseArr key
+            Case "{":  ParseObj key
+            Case "}":  key = ReducePath(key): Exit Do
+            Case ":":  key = key & "." & token(p - 1)
+            Case ",":  key = ReducePath(key)
+            Case Else:
+                If token(p + 1) <> ":" Then
+                    If dic.Exists(key) Then
+                        dic.Item(key) = token(p)
+                    Else
+                        dic.Add key, token(p)
+                    End If
+                End If
+        End Select
+    Loop
+End Function
+
+Function ParseArr(key$)
+    Dim e&
+    Do: p = p + 1
+        Select Case token(p)
+            Case "}"
+            Case "{":  ParseObj key & ArrayID(e)
+            Case "[":  ParseArr key
+            Case "]":  Exit Do
+            Case ":":  key = key & ArrayID(e)
+            Case ",":  e = e + 1
+            Case Else: dic.Add key & ArrayID(e), token(p)
+        End Select
+    Loop
+End Function
+'-------------------------------------------------------------------
+' Support Functions
+'-------------------------------------------------------------------
+Function Tokenize(s$)
+    Const Pattern = """(([^""\\]|\\.))""|[+\-]?(?:0|[1-9]\d)(?:\.\d*)?(?:[eE][+\-]?\d+)?|\w+|[^\s""']+?"
+    Tokenize = RExtract(s, Pattern, True)
+End Function
+Function RExtract(s$, Pattern, Optional bGroup1Bias As Boolean, Optional bGlobal As Boolean = True)
+  Dim c&, m, n, v
+  With CreateObject("vbscript.regexp")
+    .Global = bGlobal
+    .MultiLine = False
+    .IgnoreCase = True
+    .Pattern = Pattern
+    If .test(s) Then
+      Set m = .Execute(s)
+      ReDim v(1 To m.Count)
+      For Each n In m
+        c = c + 1
+        v(c) = n.Value
+        If bGroup1Bias Then If Len(n.submatches(0)) Or n.Value = """""" Then v(c) = n.submatches(0)
+      Next
+    End If
+  End With
+  RExtract = v
+End Function
+Function ArrayID$(e)
+    ArrayID = "(" & e & ")"
+End Function
+
+Function ReducePath$(key$)
+    If InStr(key, ".") Then ReducePath = Left(key, InStrRev(key, ".") - 1)
+End Function
+Function ListPaths(dic)
+    Dim s$, v
+    For Each v In dic
+        s = s & v & " --> " & dic(v) & vbLf
+    Next
+    'Debug.Print s
+End Function
+Function GetFilteredValues(dic, match)
+    Dim c&, i&, v, w
+    v = dic.Keys
+    ReDim w(1 To dic.Count)
+    For i = 0 To UBound(v)
+        If v(i) Like match Then
+            c = c + 1
+            w(c) = dic(v(i))
+        End If
+    Next
+    ReDim Preserve w(1 To c)
+    GetFilteredValues = w
+End Function
+
+Function GetFilteredTable(dic, cols)
+    Dim c&, i&, j&, v, w, z
+    v = dic.Keys
+    z = GetFilteredValues(dic, cols(0))
+    ReDim w(1 To UBound(z), 1 To UBound(cols) + 1)
+    For j = 1 To UBound(cols) + 1
+         z = GetFilteredValues(dic, cols(j - 1))
+         For i = 1 To UBound(z)
+            w(i, j) = z(i)
+         Next
+    Next
+    GetFilteredTable = w
+End Function
+
+Function OpenTextFile$(f)
+    With CreateObject("ADODB.Stream")
+        .Charset = "utf-8"
+        .Open
+        .LoadFromFile f
